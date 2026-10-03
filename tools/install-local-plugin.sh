@@ -8,7 +8,7 @@
 # stays installed but dormant) and runs pnpm install.
 #
 #   Usage:
-#       sh install-local-plugin.sh ~/Developer/DSH/plugins/dsh-flutter-panel
+#       sh install-local-plugin.sh ~/Projects/dsh-flutter-tools
 #       sh install-local-plugin.sh <dir> --name <package-name>   # override
 #
 #   Quit DeepSeek Harness first (refuses otherwise; ALLOW_RUNNING=1 overrides).
