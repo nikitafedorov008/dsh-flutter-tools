@@ -1,0 +1,54 @@
+{
+  "name": "dsh-flutter-panel",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Flutter panel for the DSH sidebar: VM Service connection, hot reload/restart, rebuild tracking, profiling, memory and network capture, and a one-click performance session on top of flutter-devtools-mcp",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "icon": "./icon.svg",
+  "files": [
+    "index.js",
+    "client.js",
+    "panel.html",
+    "cordis.patch.yml",
+    "README.md",
+    "icon.svg"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": {
+      "default": "./client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nikitafedorov008/dsh-flutter-tools.git"
+  },
+  "homepage": "https://github.com/nikitafedorov008/dsh-flutter-tools#readme",
+  "bugs": {
+    "url": "https://github.com/nikitafedorov008/dsh-flutter-tools/issues"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "flutter",
+    "devtools",
+    "vm-service"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime"
+      ],
+      "platform": "web"
+    }
+  }
+}

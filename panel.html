@@ -1,0 +1,1582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flutter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Cpath%20d='M14.314%200L2.3%2012%206%2015.7%2021.684.013h-7.357zm.014%2011.072L7.857%2017.53l6.47%206.47H21.7l-6.46-6.468%206.46-6.46h-7.37z'%20fill='#42A5F5'/%3E%3C/svg%3E">
+<style>
+  /* Colours and metrics come from DSH design tokens; the tab body copies the
+     live values in from the parent (an iframe inherits nothing), and --fp-*
+     below is only a theme-aware fallback for a standalone page. */
+  :root {
+    color-scheme: light dark;
+    --fp-fg: #1f2329;
+    --fp-dim: #6b7280;
+    --fp-line: rgba(0, 0, 0, .14);
+    --fp-fill: rgba(0, 0, 0, .04);
+    --fp-hover: rgba(0, 0, 0, .06);
+    --fp-accent: #3b82f6;
+    --fp-accent-fg: #fff;
+    --fp-ok: #1a9c3f;
+    --fp-err: #d93025;
+    --fp-idle: #9aa0a6;
+    --fp-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --fp-radius-sm: 6px;
+    --fp-radius-md: 8px;
+    --fp-font: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fp-fg: #e6e8ee;
+      --fp-dim: #9aa3b2;
+      --fp-line: rgba(255, 255, 255, .16);
+      --fp-fill: rgba(255, 255, 255, .06);
+      --fp-hover: rgba(255, 255, 255, .09);
+      --fp-ok: #34c759;
+      --fp-err: #ff453a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 4px 10px 20px;
+    background: transparent;
+    color: var(--dsw-alias-label-primary, var(--fp-fg));
+    font-family: var(--dsw-font-family, var(--fp-font));
+    font-size: 13px; line-height: 20px;
+  }
+  h2 {
+    margin: 0;
+    font-size: 12px; line-height: 18px; font-weight: 500;
+    color: var(--dsw-alias-label-tertiary, var(--fp-dim));
+  }
+  .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .dim {
+    color: var(--dsw-alias-label-secondary, var(--fp-dim));
+    font-size: 12px; line-height: 18px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .grow { flex: 1 1 auto; min-width: 0; }
+
+  /* ── header: identity, environment, state ───────────────────────────────── */
+  .app-head { display: flex; align-items: center; gap: 8px; padding: 4px 0 2px; }
+  .logo { flex: none; width: 16px; height: 16px; fill: currentColor; stroke: none; }
+  .who { flex: 1 1 auto; min-width: 0; }
+  .name {
+    font-size: 13px; line-height: 18px; font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .sub {
+    font-size: 11px; line-height: 16px;
+    color: var(--dsw-alias-label-tertiary, var(--fp-dim));
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* The state is the panel's anchor: a chip, not a stray line of grey text. */
+  .state {
+    flex: none; height: 24px; padding: 0 8px; gap: 5px;
+    border: 0.5px solid var(--dsw-alias-border-l2, var(--fp-line));
+    border-radius: 999px; background: transparent;
+    color: var(--dsw-alias-label-secondary, var(--fp-dim));
+    font-size: 11px; line-height: 16px;
+  }
+  .state .info { display: none; width: 12px; height: 12px; }
+  .state.linked {
+    color: var(--dsw-alias-label-primary, var(--fp-fg));
+    cursor: pointer;
+  }
+  .state.linked .info { display: block; }
+  .state .dot { width: 6px; height: 6px; }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%; flex: none;
+    background: var(--dsw-alias-state-idle-primary, var(--fp-idle));
+  }
+  .dot.on { background: var(--dsw-alias-state-success-primary, var(--fp-ok)); }
+  .dot.err { background: var(--dsw-alias-state-error-primary, var(--fp-err)); }
+
+  /* ── sections ───────────────────────────────────────────────────────────── */
+  section { margin-top: 14px; }
+  section:first-of-type { margin-top: 10px; }
+  .head-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .head-row h2 { flex: 1 1 auto; }
+  /* Everything below connect stays out of the way until there is a connection:
+     a panel that offers twenty controls before the first of them can work is
+     the opposite of calm. */
+  #remote { display: none; }
+  #remote.live { display: block; }
+
+  input, select {
+    height: 32px; padding: 0 8px;
+    border: 0.5px solid var(--dsw-alias-border-l4, var(--fp-line));
+    border-radius: var(--dsw-radius-md, var(--fp-radius-md));
+    background: var(--dsw-alias-bg-layer-1, var(--fp-fill));
+    color: var(--dsw-alias-label-primary, var(--fp-fg));
+    font: inherit; font-size: 13px; min-width: 0;
+  }
+  input::placeholder { color: var(--dsw-alias-label-dimmed, var(--fp-dim)); opacity: 1; }
+  input:focus, select:focus { outline: none; border-color: var(--dsw-alias-state-business-primary, var(--fp-accent)); }
+  input.uri { flex: 1 1 160px; font-family: var(--dsw-font-markdown-code-font-family, var(--fp-mono)); }
+
+  /* Native Button: radius-md; the compact sidebar variant is 28px / 12px. */
+  button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    height: 28px; padding: 0 10px;
+    border: none; border-radius: var(--dsw-radius-sm, var(--fp-radius-sm));
+    background: transparent;
+    color: var(--dsw-alias-label-primary, var(--fp-fg));
+    font: inherit; font-size: 12px; line-height: 18px;
+    cursor: pointer;
+  }
+  button.icon { width: 28px; padding: 0; }
+  button:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover, var(--fp-hover)); }
+  button:active:not(:disabled) { background: var(--dsw-alias-interactive-bg-active, var(--fp-hover)); }
+  button:disabled { cursor: not-allowed; opacity: .4; }
+  button.primary {
+    background: var(--dsw-alias-button-primary-fill, var(--fp-accent));
+    color: var(--dsw-alias-label-primary-foreground, var(--fp-accent-fg));
+  }
+  button.primary:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover, var(--fp-accent)); }
+  button.outline { border: 0.5px solid var(--dsw-alias-border-l3, var(--fp-line)); }
+  button.toggle.running {
+    border: 0.5px solid var(--dsw-alias-state-error-primary, var(--fp-err));
+    color: var(--dsw-alias-state-error-primary, var(--fp-err));
+  }
+  svg.ic {
+    flex: none; width: 16px; height: 16px;
+    fill: none; stroke: currentColor; stroke-width: 1.5;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  /* Brand glyphs are silhouettes: they must be filled, not stroked like the
+     line icons `svg.ic` defaults to. */
+  svg.ic.brand { fill: currentColor; stroke: none; }
+  .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 4px; }
+  .grid button { justify-content: flex-start; width: 100%; }
+
+  /* ── devices: one selected target, the rest behind a picker ─────────────── */
+  .picker { position: relative; margin-top: 6px; }
+  .picker-button {
+    display: flex; align-items: center; gap: 7px; width: 100%;
+    justify-content: flex-start; text-align: left;
+    /* The panel's buttons are 28px tall; this one carries two lines of text, so
+       it sizes to its content instead of clipping the version line. */
+    height: auto; min-height: 42px; padding: 6px 8px;
+  }
+  .picker-button .os { width: 16px; height: 16px; opacity: .95; flex: none; }
+  .picker-button .kind { width: 12px; height: 12px; opacity: .5; margin-left: -3px; flex: none; }
+  .picker-labels { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+  .picker-name { font-size: 13px; line-height: 1.25; }
+  .picker-meta {
+    font-size: 11px; line-height: 1.3;
+    color: var(--dsw-alias-label-tertiary, var(--fp-dim));
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .picker-button .caret { transition: transform .12s ease; opacity: .55; flex: none; }
+  .picker-button[aria-expanded="true"] .caret { transform: rotate(90deg); }
+  /* An author `display` beats the UA rule for [hidden], so the picker would stay
+     on screen forever without this. `allow-discrete` lets the close transition
+     run too: `display` flips at the end of the fade instead of instantly. */
+  .picker-list[hidden] { display: none; opacity: 0; transform: translateY(-4px); }
+  @starting-style {
+    .picker-list:not([hidden]) { opacity: 0; transform: translateY(-4px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .picker-list { transition: none; }
+  }
+  .picker-list {
+    position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 4px);
+    display: flex; flex-direction: column; gap: 1px;
+    /* 3.5px + the 0.5px border = 4px, so a row's 4px padding puts its content on
+       the same 8px line as the button above. */
+    padding: 4px 3.5px;
+    max-height: 264px; overflow: auto;
+    opacity: 1; transform: translateY(0);
+    transition: opacity .13s ease, transform .13s ease, display .13s allow-discrete;
+    background: var(--dsw-alias-bg-layer-2, var(--fp-fill));
+    border: 0.5px solid var(--dsw-alias-border-l2, var(--fp-line));
+    border-radius: var(--dsw-radius-md, var(--fp-radius-md));
+    box-shadow: 0 10px 28px #00000040;
+  }
+  .picker-row {
+    display: flex; align-items: center; gap: 7px; width: 100%;
+    justify-content: flex-start; text-align: left;
+    height: auto; min-height: 42px;
+    /* 4px list padding + 4px here = the button's 8px inset, so the icon of the
+       selected row sits exactly under the icon in the button. */
+    padding: 6px 4px;
+    border-radius: var(--dsw-radius-sm, 6px);
+  }
+  .picker-row:hover { background: var(--dsw-alias-bg-layer-3, #ffffff14); }
+  /* Same size as the button's glyph, so both sit on the same vertical line. */
+  .picker-row .os { width: 16px; height: 16px; flex: none; }
+  .picker-row .kind { width: 12px; height: 12px; opacity: .5; margin-left: -3px; flex: none; }
+  .picker-row .check { margin-left: auto; opacity: 0; flex: none; }
+  .picker-row[aria-selected="true"] .check { opacity: .85; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+    height: 26px; padding: 0 8px;
+    border: 0.5px solid var(--dsw-alias-border-l2, var(--fp-line));
+    border-radius: 999px; background: transparent;
+    color: var(--dsw-alias-label-primary, var(--fp-fg));
+    font: inherit; font-size: 12px; line-height: 18px;
+    cursor: pointer;
+  }
+  .chip .meta { color: var(--dsw-alias-label-tertiary, var(--fp-dim)); font-size: 11px; }
+  .chip .copied { color: var(--dsw-alias-state-success-primary, var(--fp-ok)); font-size: 11px; }
+
+  .switch-row {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    padding: 4px 6px; border: none; border-radius: var(--dsw-radius-sm, var(--fp-radius-sm));
+    background: transparent; color: inherit; font: inherit; font-size: 13px; line-height: 20px;
+    cursor: pointer; text-align: left;
+  }
+  .switch-row:hover { background: var(--dsw-alias-interactive-bg-hover, var(--fp-hover)); }
+  .switch-row .label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .switch {
+    position: relative; flex: none; width: 30px; height: 18px; border-radius: 9px;
+    background: var(--dsw-alias-bg-layer-3, var(--fp-fill));
+    border: 0.5px solid var(--dsw-alias-border-l3, var(--fp-line));
+    transition: background .12s ease, border-color .12s ease;
+  }
+  .switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--dsw-alias-label-tertiary, var(--fp-dim));
+    transition: left .12s ease, background .12s ease;
+  }
+  .switch-row.on .switch {
+    background: var(--dsw-alias-button-primary-fill, var(--fp-accent));
+    border-color: transparent;
+  }
+  .switch-row.on .switch::after {
+    left: 14px;
+    background: var(--dsw-alias-label-primary-foreground, var(--fp-accent-fg));
+  }
+
+  /* Structured views: key/value for VM facts, a real table for pub outdated,
+     a checklist for flutter doctor. */
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin-top: 6px; }
+  .kv .k { color: var(--dsw-alias-label-tertiary, var(--fp-dim)); font-size: 12px; white-space: nowrap; }
+  .kv .v {
+    font-family: var(--dsw-font-markdown-code-font-family, var(--fp-mono));
+    font-size: 12px; overflow-wrap: anywhere;
+  }
+  table.deps { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  table.deps th {
+    text-align: left; font-weight: 500; font-size: 11px;
+    color: var(--dsw-alias-label-tertiary, var(--fp-dim));
+    padding: 4px 6px; border-bottom: 0.5px solid var(--dsw-alias-border-l2, var(--fp-line));
+    white-space: nowrap;
+  }
+  table.deps td {
+    padding: 3px 6px; font-size: 12px;
+    font-family: var(--dsw-font-markdown-code-font-family, var(--fp-mono));
+    border-bottom: 0.5px solid var(--dsw-alias-border-l1, var(--fp-line));
+  }
+  table.deps td.name { font-family: var(--dsw-font-family, var(--fp-font)); }
+  table.deps tr.group td {
+    border: none; padding-top: 10px; font-family: var(--dsw-font-family, var(--fp-font));
+    color: var(--dsw-alias-label-tertiary, var(--fp-dim)); font-size: 11px;
+  }
+  table.deps tr.outdated td {
+    background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #3b82f6) 9%, transparent);
+  }
+  .checks { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+  .check { display: grid; grid-template-columns: 14px 1fr; gap: 7px; font-size: 12.5px; align-items: baseline; }
+  .check .mark { text-align: center; }
+  .check.ok .mark { color: var(--dsw-alias-state-success-primary, var(--fp-ok)); }
+  .check.bad .mark { color: var(--dsw-alias-state-error-primary, var(--fp-err)); }
+  .check.warn .mark { color: var(--dsw-alias-state-business-primary, var(--fp-accent)); }
+  .check .detail {
+    grid-column: 2; font-size: 11.5px; white-space: pre-wrap; overflow-wrap: anywhere;
+    color: var(--dsw-alias-label-tertiary, var(--fp-dim));
+    font-family: var(--dsw-font-markdown-code-font-family, var(--fp-mono));
+  }
+  .note { font-size: 11.5px; margin-top: 6px; color: var(--dsw-alias-label-tertiary, var(--fp-dim)); }
+  .define { display: grid; grid-template-columns: 1fr 1.2fr 26px; gap: 5px; margin-top: 4px; }
+  .define input {
+    height: 28px; font-size: 12px;
+    font-family: var(--dsw-font-markdown-code-font-family, var(--fp-mono));
+  }
+  .define button { width: 26px; height: 28px; padding: 0; }
+  .devtools-bar { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .devtools-bar .where { flex: 1 1 auto; min-width: 0; }
+  iframe.devtools { width: 100%; height: min(72vh, 560px); display: block; margin-top: 6px; border: 0.5px solid var(--dsw-alias-border-l2, var(--fp-line)); border-radius: var(--dsw-radius-md, var(--fp-radius-md)); background: var(--dsw-alias-bg-layer-1, var(--fp-fill)); }
+
+  pre.out {
+    margin: 6px 0 0; padding: 8px;
+    border: 0.5px solid var(--dsw-alias-border-l2, var(--fp-line));
+    border-radius: var(--dsw-radius-md, var(--fp-radius-md));
+    background: var(--dsw-alias-bg-layer-1, var(--fp-fill));
+    color: var(--dsw-alias-label-secondary, var(--fp-dim));
+    white-space: pre-wrap; word-break: break-word;
+    max-height: 40vh; overflow: auto;
+    font-family: var(--dsw-font-markdown-code-font-family, var(--fp-mono));
+    font-size: 12px; line-height: 18px;
+  }
+  pre.out:empty { display: none; }
+  pre.out.err { color: var(--dsw-alias-state-error-primary, var(--fp-err)); }
+  img.shot {
+    display: block; max-width: 100%; margin-top: 6px;
+    border: 0.5px solid var(--dsw-alias-border-l2, var(--fp-line));
+    border-radius: var(--dsw-radius-md, var(--fp-radius-md));
+  }
+  .spin {
+    display: inline-block; width: 10px; height: 10px;
+    border: 1.5px solid var(--dsw-alias-label-tertiary, var(--fp-dim));
+    border-top-color: transparent; border-radius: 50%;
+    animation: sp .7s linear infinite;
+  }
+  @keyframes sp { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="ic-link" viewBox="0 0 16 16"><path d="M6.6 9.4 9.4 6.6"/><path d="M7.4 4.7 9 3.1a2.4 2.4 0 0 1 3.4 3.4l-1.6 1.6"/><path d="M8.6 11.3 7 12.9a2.4 2.4 0 0 1-3.4-3.4l1.6-1.6"/></symbol>
+  <symbol id="ic-unlink" viewBox="0 0 16 16"><path d="M7.4 4.7 9 3.1a2.4 2.4 0 0 1 3.4 3.4l-1.6 1.6"/><path d="M8.6 11.3 7 12.9a2.4 2.4 0 0 1-3.4-3.4l1.6-1.6"/><path d="M3.4 12.6 12.6 3.4"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2"/><path d="M10.2 10.2 13.4 13.4"/></symbol>
+  <symbol id="ic-bolt" viewBox="0 0 16 16"><path d="M8.7 2.2 4.7 8.6h3l-.6 5.2 4.3-6.5H8.4Z"/></symbol>
+  <symbol id="ic-restart" viewBox="0 0 16 16"><path d="M13.2 8a5.2 5.2 0 1 1-1.9-4"/><path d="M11.3 1.6v2.8h2.8"/></symbol>
+  <symbol id="ic-camera" viewBox="0 0 16 16"><path d="M2.6 5.6V3.9a1.3 1.3 0 0 1 1.3-1.3h1.7"/><path d="M13.4 5.6V3.9a1.3 1.3 0 0 0-1.3-1.3h-1.7"/><path d="M2.6 10.4v1.7a1.3 1.3 0 0 0 1.3 1.3h1.7"/><path d="M13.4 10.4v1.7a1.3 1.3 0 0 1-1.3 1.3h-1.7"/></symbol>
+  <symbol id="ic-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.7"/><path d="M8 7.3v3.9"/><path d="M8 5.2h.1"/></symbol>
+  <symbol id="ic-tree" viewBox="0 0 16 16"><rect x="6.4" y="1.6" width="3.2" height="2.6" rx="0.7"/><path d="M8 4.2v2.4"/><path d="M3.6 6.6h8.8"/><path d="M3.6 6.6v3"/><path d="M12.4 6.6v3"/><rect x="2.2" y="9.6" width="2.8" height="2.6" rx="0.7"/><rect x="11" y="9.6" width="2.8" height="2.6" rx="0.7"/></symbol>
+  <symbol id="ic-brush" viewBox="0 0 16 16"><path d="M13.4 2.9a1.4 1.4 0 0 0-2-2L6.2 6.1l2 2z"/><path d="M5.6 7.6c-1.1-.4-2.3.4-2.6 1.6-.2 1-.8 1.7-1.6 2.2 1.2 1.1 3.2 1.3 4.5.4.9-.6 1.2-1.7.7-2.6z"/></symbol>
+  <symbol id="ic-play" viewBox="0 0 16 16"><path d="M5.6 3.4 12.4 8l-6.8 4.6z"/></symbol>
+  <symbol id="ic-stop" viewBox="0 0 16 16"><rect x="4.4" y="4.4" width="7.2" height="7.2" rx="1.4"/></symbol>
+  <symbol id="ic-layers" viewBox="0 0 16 16"><path d="M8 2.2 2.6 5.2 8 8.2l5.4-3z"/><path d="M2.8 8.4 8 11.3l5.2-2.9"/><path d="M2.8 11.2 8 14.1l5.2-2.9"/></symbol>
+  <symbol id="ic-list" viewBox="0 0 16 16"><path d="M5.6 4.4h7"/><path d="M5.6 8h7"/><path d="M5.6 11.6h7"/><path d="M3 4.4h.1"/><path d="M3 8h.1"/><path d="M3 11.6h.1"/></symbol>
+  <symbol id="ic-terminal" viewBox="0 0 16 16"><rect x="2.2" y="3" width="11.6" height="10" rx="1.8"/><path d="M5 6.6 7.2 8.8 5 11"/><path d="M8.6 11h2.6"/></symbol>
+  <symbol id="ic-record" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.6"/><circle cx="8" cy="8" r="2.1"/></symbol>
+  <symbol id="ic-web" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.7"/><path d="M2.3 8h11.4"/><path d="M8 2.3c1.6 1.7 2.4 3.6 2.4 5.7S9.6 12 8 13.7C6.4 12 5.6 10.1 5.6 8s.8-4 2.4-5.7z"/></symbol>
+  <symbol id="ic-phone" viewBox="0 0 16 16"><rect x="4.2" y="1.8" width="7.6" height="12.4" rx="1.8"/><path d="M7 12.4h2"/></symbol>
+  <symbol id="ic-desktop" viewBox="0 0 16 16"><rect x="1.8" y="3" width="12.4" height="8.4" rx="1.5"/><path d="M6 13.8h4"/><path d="M8 11.4v2.4"/></symbol>
+  <symbol id="ic-flutter" viewBox="0 0 24 24"><path d="M14.314 0L2.3 12 6 15.7 21.684.013h-7.357zm.014 11.072L7.857 17.53l6.47 6.47H21.7l-6.46-6.468 6.46-6.46h-7.37z" stroke="none"/></symbol>
+  <symbol id="ic-apple" viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></symbol>
+  <symbol id="ic-android" viewBox="0 0 24 24"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4483-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4483.9993.9993 0 .5511-.4483.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.2439 13.8533 7.8508 12 7.8508s-3.5902.3931-5.1367 1.0989L4.841 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3435-4.1021-2.6892-7.5743-6.1185-9.4396"/></symbol>
+  <symbol id="ic-windows" viewBox="0 0 24 24"><path d="M0,0H11.377V11.372H0ZM12.623,0H24V11.372H12.623ZM0,12.623H11.377V24H0Zm12.623,0H24V24H12.623"/></symbol>
+  <symbol id="ic-linux" viewBox="0 0 24 24"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.132 1.884 1.071.771-.06 1.592-.536 2.257-1.306.631-.765 1.683-1.084 2.378-1.503.348-.199.629-.469.649-.853.023-.4-.2-.811-.714-1.376v-.097l-.003-.003c-.17-.2-.25-.535-.338-.926-.085-.401-.182-.786-.492-1.046h-.003c-.059-.054-.123-.067-.188-.135a.357.357 0 00-.19-.064c.431-1.278.264-2.55-.173-3.694-.533-1.41-1.465-2.638-2.175-3.483-.796-1.005-1.576-1.957-1.56-3.368.026-2.152.236-6.133-3.544-6.139zm.529 3.405h.013c.213 0 .396.062.584.198.19.135.33.332.438.533.105.259.158.459.166.724 0-.02.006-.04.006-.06v.105a.086.086 0 01-.004-.021l-.004-.024a1.807 1.807 0 01-.15.706.953.953 0 01-.213.335.71.71 0 00-.088-.042c-.104-.045-.198-.064-.284-.133a1.312 1.312 0 00-.22-.066c.05-.06.146-.133.183-.198.053-.128.082-.264.088-.402v-.02a1.21 1.21 0 00-.061-.4c-.045-.134-.101-.2-.183-.333-.084-.066-.167-.132-.267-.132h-.016c-.093 0-.176.03-.262.132a.8.8 0 00-.205.334 1.18 1.18 0 00-.09.4v.019c.002.089.008.179.02.267-.193-.067-.438-.135-.607-.202a1.635 1.635 0 01-.018-.2v-.02a1.772 1.772 0 01.15-.768c.082-.22.232-.406.43-.533a.985.985 0 01.594-.2zm-2.962.059h.036c.142 0 .27.048.399.135.146.129.264.288.344.465.09.199.14.4.153.667v.004c.007.134.006.2-.002.266v.08c-.03.007-.056.018-.083.024-.152.055-.274.135-.393.2.012-.09.013-.18.003-.267v-.015c-.012-.133-.04-.2-.082-.333a.613.613 0 00-.166-.267.248.248 0 00-.183-.064h-.021c-.071.006-.13.04-.186.132a.552.552 0 00-.12.27.944.944 0 00-.023.33v.015c.012.135.037.2.08.334.046.134.098.2.166.268.01.009.02.018.034.024-.07.057-.117.07-.176.136a.304.304 0 01-.131.068 2.62 2.62 0 01-.275-.402 1.772 1.772 0 01-.155-.667 1.759 1.759 0 01.08-.668 1.43 1.43 0 01.283-.535c.128-.133.26-.2.418-.2zm1.37 1.706c.332 0 .733.065 1.216.399.293.2.523.269 1.052.468h.003c.255.136.405.266.478.399v-.131a.571.571 0 01.016.47c-.123.31-.516.643-1.063.842v.002c-.268.135-.501.333-.775.465-.276.135-.588.292-1.012.267a1.139 1.139 0 01-.448-.067 3.566 3.566 0 01-.322-.198c-.195-.135-.363-.332-.612-.465v-.005h-.005c-.4-.246-.616-.512-.686-.71-.07-.268-.005-.47.193-.6.224-.135.38-.271.483-.336.104-.074.143-.102.176-.131h.002v-.003c.169-.202.436-.47.839-.601.139-.036.294-.065.466-.065zm2.8 2.142c.358 1.417 1.196 3.475 1.735 4.473.286.534.855 1.659 1.102 3.024.156-.005.33.018.513.064.646-1.671-.546-3.467-1.089-3.966-.22-.2-.232-.335-.123-.335.59.534 1.365 1.572 1.646 2.757.13.535.16 1.104.021 1.67.067.028.135.06.205.067 1.032.534 1.413.938 1.23 1.537v-.043c-.06-.003-.12 0-.18 0h-.016c.151-.467-.182-.825-1.065-1.224-.915-.4-1.646-.336-1.77.465-.008.043-.013.066-.018.135-.068.023-.139.053-.209.064-.43.268-.662.669-.793 1.187-.13.533-.17 1.156-.205 1.869v.003c-.02.334-.17.838-.319 1.35-1.5 1.072-3.58 1.538-5.348.334a2.645 2.645 0 00-.402-.533 1.45 1.45 0 00-.275-.333c.182 0 .338-.03.465-.067a.615.615 0 00.314-.334c.108-.267 0-.697-.345-1.163-.345-.467-.931-.995-1.788-1.521-.63-.4-.986-.87-1.15-1.396-.165-.534-.143-1.085-.015-1.645.245-1.07.873-2.11 1.274-2.763.107-.065.037.135-.408.974-.396.751-1.14 2.497-.122 3.854a8.123 8.123 0 01.647-2.876c.564-1.278 1.743-3.504 1.836-5.268.048.036.217.135.289.202.218.133.38.333.59.465.21.201.477.335.876.335.039.003.075.006.11.006.412 0 .73-.134.997-.268.29-.134.52-.334.74-.4h.005c.467-.135.835-.402 1.044-.7zm2.185 8.958c.037.6.343 1.245.882 1.377.588.134 1.434-.333 1.791-.765l.211-.01c.315-.007.577.01.847.268l.003.003c.208.199.305.53.391.876.085.4.154.78.409 1.066.486.527.645.906.636 1.14l.003-.007v.018l-.003-.012c-.015.262-.185.396-.498.595-.63.401-1.746.712-2.457 1.57-.618.737-1.37 1.14-2.036 1.191-.664.053-1.237-.2-1.574-.898l-.005-.003c-.21-.4-.12-1.025.056-1.69.176-.668.428-1.344.463-1.897.037-.714.076-1.335.195-1.814.12-.465.308-.797.641-.984l.045-.022zm-10.814.049h.01c.053 0 .105.005.157.014.376.055.706.333 1.023.752l.91 1.664.003.003c.243.533.754 1.064 1.189 1.637.434.598.77 1.131.729 1.57v.006c-.057.744-.48 1.148-1.125 1.294-.645.135-1.52.002-2.395-.464-.968-.536-2.118-.469-2.857-.602-.369-.066-.61-.2-.723-.4-.11-.2-.113-.602.123-1.23v-.004l.002-.003c.117-.334.03-.752-.027-1.118-.055-.401-.083-.71.043-.94.16-.334.396-.4.69-.533.294-.135.64-.202.915-.47h.002v-.002c.256-.268.445-.601.668-.838.19-.201.38-.336.663-.336zm7.159-9.074c-.435.201-.945.535-1.488.535-.542 0-.97-.267-1.28-.466-.154-.134-.28-.268-.373-.335-.164-.134-.144-.333-.074-.333.109.016.129.134.199.2.096.066.215.2.36.333.292.2.68.467 1.167.467.485 0 1.053-.267 1.398-.466.195-.135.445-.334.648-.467.156-.136.149-.267.279-.267.128.016.034.134-.147.332a8.097 8.097 0 01-.69.468zm-1.082-1.583V5.64c-.006-.02.013-.042.029-.05.074-.043.18-.027.26.004.063 0 .16.067.15.135-.006.049-.085.066-.135.066-.055 0-.092-.043-.141-.068-.052-.018-.146-.008-.163-.065zm-.551 0c-.02.058-.113.049-.166.066-.047.025-.086.068-.14.068-.05 0-.13-.02-.136-.068-.01-.066.088-.133.15-.133.08-.031.184-.047.259-.005.019.009.036.03.03.05v.02h.003z"/></symbol>
+  <symbol id="ic-check" viewBox="0 0 16 16"><path d="M3.4 8.6l3 3 6.2-7"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 16 16"><path d="M8 3.4v9.2"/><path d="M3.4 8h9.2"/></symbol>
+  <symbol id="ic-chevron" viewBox="0 0 16 16"><path d="M6.2 3.6 10.6 8l-4.4 4.4"/></symbol>
+</svg>
+
+<header class="app-head">
+  <svg class="logo" aria-hidden="true"><use href="#ic-flutter"/></svg>
+  <div class="who">
+    <div class="name" id="project">project</div>
+    <div class="sub" id="env"></div>
+  </div>
+  <button class="state" id="status">
+    <span class="dot" id="dot"></span><span id="statusText">not connected</span>
+    <svg class="ic info" aria-hidden="true"><use href="#ic-info"/></svg>
+  </button>
+</header>
+
+<section>
+  <div class="head-row">
+    <h2>Devices</h2>
+    <button class="icon outline" id="devices-refresh" title="Re-read the device list">
+      <svg class="ic" aria-hidden="true"><use href="#ic-restart"/></svg>
+    </button>
+    <span class="dim" id="devices-summary">… reading devices</span>
+  </div>
+  <div class="picker" id="device-picker">
+    <button class="picker-button" id="device-button" aria-haspopup="listbox" aria-expanded="false">
+      <svg class="ic os" aria-hidden="true"><use href="#ic-desktop"/></svg>
+      <svg class="ic kind" aria-hidden="true"><use href="#ic-desktop"/></svg>
+      <span class="picker-labels">
+        <span class="picker-name" id="device-name">—</span>
+        <span class="picker-meta" id="device-meta"></span>
+      </span>
+      <svg class="ic caret" aria-hidden="true"><use href="#ic-chevron"/></svg>
+    </button>
+    <div class="picker-list" id="device-list" role="listbox" hidden></div>
+  </div>
+  <pre class="out" id="devices-error"></pre>
+</section>
+
+<section>
+  <div class="head-row"><h2>Launch</h2></div>
+  <div class="row">
+    <select id="run-mode" title="Build mode: profile is the one with usable metrics">
+      <option value="debug">debug</option>
+      <option value="profile">profile</option>
+      <option value="release">release</option>
+    </select>
+    <button class="primary" id="run-toggle" title="Run the app on the selected device">
+      <svg class="ic" aria-hidden="true"><use href="#ic-play"/></svg><span id="run-toggle-label">Run</span>
+    </button>
+    <button class="outline" id="run-detach" title="Detach: the app keeps running, the panel stops tracking it">
+      <svg class="ic" aria-hidden="true"><use href="#ic-unlink"/></svg><span>Detach</span>
+    </button>
+    <button class="outline" id="run-web" disabled title="Open the app in a sidebar browser tab">
+      <svg class="ic" aria-hidden="true"><use href="#ic-web"/></svg><span>In browser</span>
+    </button>
+    <button class="icon outline" id="run-emulator" title="Boot an emulator (iOS Simulator or Android AVD)">
+      <svg class="ic" aria-hidden="true"><use href="#ic-desktop"/></svg>
+    </button>
+  </div>
+  <div class="row" style="margin-top:4px">
+    <input class="grow" id="run-flavor" list="flavor-list" placeholder="flavor (optional)">
+    <datalist id="flavor-list"></datalist>
+    <button class="icon outline" id="define-add" title="Add a --dart-define">
+      <svg class="ic" aria-hidden="true"><use href="#ic-plus"/></svg>
+    </button>
+    <span class="dim" id="defines-count"></span>
+  </div>
+  <div id="defines-list"></div>
+  <div class="dim" id="run-status" style="margin-top:4px">The app was not started from this panel</div>
+  <pre class="out" id="run-out"></pre>
+</section>
+
+<section>
+  <div class="head-row"><h2>Connection</h2></div>
+  <div class="row">
+    <input class="uri" id="uri" placeholder="VM Service URI">
+    <button class="primary" id="connect"><svg class="ic" aria-hidden="true"><use href="#ic-link"/></svg><span>Connect</span></button>
+    <button class="icon outline" id="discover" title="Find running Flutter apps">
+      <svg class="ic" aria-hidden="true"><use href="#ic-search"/></svg>
+    </button>
+    <button class="icon outline" id="disconnect" title="Disconnect">
+      <svg class="ic" aria-hidden="true"><use href="#ic-unlink"/></svg>
+    </button>
+  </div>
+  <div class="row" id="discovered" style="margin-top:4px"></div>
+  <pre class="out" id="connect-out"></pre>
+</section>
+
+<section>
+  <div class="head-row"><h2>Project</h2></div>
+  <div class="grid">
+    <button data-command="pub_get" title="flutter pub get in the workspace">
+      <svg class="ic" aria-hidden="true"><use href="#ic-layers"/></svg><span>pub get</span>
+    </button>
+    <button data-command="pub_outdated" title="flutter pub outdated: what can be upgraded">
+      <svg class="ic" aria-hidden="true"><use href="#ic-list"/></svg><span>Dependencies</span>
+    </button>
+    <button data-command="doctor" title="flutter doctor: toolchain health">
+      <svg class="ic" aria-hidden="true"><use href="#ic-info"/></svg><span>Doctor</span>
+    </button>
+  </div>
+  <div id="command-out"></div>
+</section>
+
+<div id="remote">
+  <section>
+    <div class="head-row"><h2>Control</h2></div>
+    <div class="grid">
+      <button data-tool="hot_reload" title="Hot reload: recompile without restarting"><svg class="ic" aria-hidden="true"><use href="#ic-bolt"/></svg><span>Hot reload</span></button>
+      <button data-tool="hot_restart" title="Hot restart: restart and reconnect"><svg class="ic" aria-hidden="true"><use href="#ic-restart"/></svg><span>Hot restart</span></button>
+      <button data-tool="take_screenshot" title="Capture the app screen and show it here"><svg class="ic" aria-hidden="true"><use href="#ic-camera"/></svg><span>Screenshot</span></button>
+      <button data-tool="get_widget_tree" title="Widget tree of the current screen"><svg class="ic" aria-hidden="true"><use href="#ic-tree"/></svg><span>Widgets</span></button>
+      <button data-tool="toggle_debug_paint" title="Show borders, padding and alignment"><svg class="ic" aria-hidden="true"><use href="#ic-brush"/></svg><span>Debug paint</span></button>
+    </div>
+    <pre class="out" id="control-out"></pre>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>Debug</h2></div>
+    <div id="toggles"></div>
+    <pre class="out" id="toggles-out"></pre>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>DevTools</h2></div>
+    <div class="grid">
+      <button data-devtools="inspector" title="Widget inspector: tree, properties, on-screen widget selection"><svg class="ic" aria-hidden="true"><use href="#ic-tree"/></svg><span>Inspector</span></button>
+      <button data-devtools="performance" title="Performance: frames, jank, timeline"><svg class="ic" aria-hidden="true"><use href="#ic-bolt"/></svg><span>Frames</span></button>
+      <button data-devtools="memory" title="Memory: heap, allocations, snapshots"><svg class="ic" aria-hidden="true"><use href="#ic-layers"/></svg><span>Memory</span></button>
+      <button data-devtools="network" title="Network: the app's HTTP requests and responses"><svg class="ic" aria-hidden="true"><use href="#ic-web"/></svg><span>Network</span></button>
+      <button data-devtools="logging" title="Live app logs"><svg class="ic" aria-hidden="true"><use href="#ic-terminal"/></svg><span>Logs</span></button>
+    </div>
+    <div id="devtools-view" hidden>
+      <div class="devtools-bar">
+        <span class="dim grow where" id="devtools-where"></span>
+        <button class="outline" id="devtools-sidebar" title="Open the same page in a sidebar browser tab">
+          <svg class="ic" aria-hidden="true"><use href="#ic-web"/></svg><span>To sidebar</span>
+        </button>
+        <button class="icon outline" id="devtools-close" title="Close the embedded DevTools">
+          <svg class="ic" aria-hidden="true"><use href="#ic-stop"/></svg>
+        </button>
+      </div>
+      <iframe class="devtools" id="devtools-frame" title="Flutter DevTools" src="about:blank"></iframe>
+    </div>
+    <pre class="out" id="devtools-out"></pre>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>Captures</h2></div>
+    <div class="row">
+      <button class="toggle outline" data-toggle="rebuilds" data-on="start_tracking_rebuilds" data-off="stop_tracking_rebuilds" data-off-label="Report" title="Track widget rebuilds">
+        <svg class="ic" aria-hidden="true"><use href="#ic-play"/></svg><span>Rebuilds</span>
+      </button>
+      <button class="toggle outline" data-toggle="network" data-on="start_network_capture" data-off="stop_network_capture" data-off-label="Report" title="Record the app's HTTP traffic">
+        <svg class="ic" aria-hidden="true"><use href="#ic-play"/></svg><span>Network</span>
+      </button>
+    </div>
+    <pre class="out" id="capture-out"></pre>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>Profiling</h2></div>
+    <div class="row">
+      <button class="toggle outline" data-toggle="profiling" data-on="start_profiling" data-off="stop_profiling" data-off-label="Analysis" title="Frame and CPU profiling">
+        <svg class="ic" aria-hidden="true"><use href="#ic-play"/></svg><span>Start</span>
+      </button>
+      <button data-tool="get_memory_snapshot" title="Memory allocation snapshot"><svg class="ic" aria-hidden="true"><use href="#ic-layers"/></svg><span>Memory</span></button>
+      <button data-tool="list_snapshots" title="List the saved memory snapshots"><svg class="ic" aria-hidden="true"><use href="#ic-list"/></svg><span>Snapshots</span></button>
+    </div>
+    <pre class="out" id="profile-out"></pre>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>App</h2></div>
+    <div id="app-info"></div>
+    <div class="row" style="margin-top:6px">
+      <span class="dim grow" id="heap">heap: —</span>
+      <button class="outline" id="gc" title="Collect garbage and refresh the numbers">
+        <svg class="ic" aria-hidden="true"><use href="#ic-layers"/></svg><span>GC</span>
+      </button>
+      <button class="outline" id="snap-save" title="Save a memory snapshot with a timestamp">
+        <svg class="ic" aria-hidden="true"><use href="#ic-record"/></svg><span>Snapshot</span>
+      </button>
+      <button class="outline" id="snap-compare" title="Compare the last two snapshots this panel took">
+        <svg class="ic" aria-hidden="true"><use href="#ic-list"/></svg><span>Compare</span>
+      </button>
+    </div>
+    <pre class="out" id="app-out"></pre>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>Performance session</h2></div>
+    <div class="row">
+      <input id="scenario" class="grow" placeholder="scenario" value="manual-session">
+      <input id="seconds" type="number" min="5" max="120" value="30" style="width:64px">
+      <span class="dim">s</span>
+      <button class="primary" id="perf" title="Recording plus a P0/P1/P2 report; the analysis tail takes another 1–2 minutes"><svg class="ic" aria-hidden="true"><use href="#ic-record"/></svg><span>Collect</span></button>
+    </div>
+    <pre class="out" id="perf-out"></pre>
+  </section>
+
+  <section>
+    <div class="head-row"><h2>Expression</h2></div>
+    <div class="row">
+      <input class="uri" id="expr" list="expr-history" placeholder="MediaQuery.of(context).size">
+      <datalist id="expr-history"></datalist>
+      <button class="outline" id="eval"><svg class="ic" aria-hidden="true"><use href="#ic-terminal"/></svg><span>Evaluate</span></button>
+    </div>
+    <pre class="out" id="eval-out"></pre>
+  </section>
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const cwd = params.get('cwd') || '';
+  const cwdName = cwd.split('/').filter(Boolean).pop() || cwd;
+  const devicesSummary = document.getElementById('devices-summary');
+  const devicesError = document.getElementById('devices-error');
+  const remote = document.getElementById('remote');
+  const dot = document.getElementById('dot');
+  const statusChip = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const projectEl = document.getElementById('project');
+  const envEl = document.getElementById('env');
+  const uri = document.getElementById('uri');
+  let connected = false;
+  let inflight = 0;
+  let toggleSpecs = null;  // extension name -> human label, from /flutter/config
+  let toggleState = {};    // extension name -> current boolean
+  let knownDevices = [];   // last device list, feeds the launch picker
+  let runTimer = null;
+  let lastLaunchedUri = '';
+  let currentWebUrl = '';
+  let heapTimer = null;
+  const SNAP_KEY = 'dsh-flutter-panel.snapshots';
+  const EXPR_KEY = 'dsh-flutter-panel.expressions';
+
+
+  /* ── helpers ─────────────────────────────────────────────────────────────── */
+  function icon(id, className) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', className ? 'ic ' + className : 'ic');
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#' + id);
+    svg.append(use);
+    return svg;
+  }
+
+  function slot(id) { return document.getElementById(id); }
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+  }
+
+  /* ── structured views: facts as rows, pub as a table, doctor as a checklist ─ */
+
+  const APP_INFO_LABELS = {
+    status: 'Status',
+    'vm.version': 'VM version',
+    'vm.os': 'Platform',
+    'vm.targetCPU': 'Architecture',
+    'vm.pid': 'Process PID',
+    'mainIsolate.name': 'Isolate',
+    'mainIsolate.id': 'Isolate ID',
+    'mainIsolate.isolates': 'Isolates',
+    isolateCount: 'Total isolates'
+  };
+
+  function flatten(value, prefix, out) {
+    if (value === null || typeof value !== 'object') {
+      out.push([prefix, String(value)]);
+      return;
+    }
+    for (const key of Object.keys(value)) flatten(value[key], prefix === '' ? key : prefix + '.' + key, out);
+  }
+
+  /** `get_app_info` answers with JSON; raw text is the fallback, not the view. */
+  function renderAppInfo(text) {
+    const box = document.getElementById('app-info');
+    box.replaceChildren();
+    let parsed;
+    try {
+      parsed = JSON.parse(String(text || ''));
+    } catch (error) {
+      return false;
+    }
+    if (parsed === null || typeof parsed !== 'object') return false;
+    const rows = [];
+    flatten(parsed, '', rows);
+    // `vm.name` is always the literal "vm"; it says nothing.
+    for (let i = rows.length - 1; i >= 0; i -= 1) {
+      if (rows[i][0] === 'vm.name') rows.splice(i, 1);
+    }
+    if (rows.length === 0) return false;
+    const grid = el('div', 'kv');
+    for (const [key, value] of rows) {
+      grid.append(el('div', 'k', APP_INFO_LABELS[key] || key));
+      grid.append(el('div', 'v', value));
+    }
+    box.append(grid);
+    return true;
+  }
+
+  function doctorRow(line) {
+    const match = line.match(/^\[(.)\]\s*(.*)$/);
+    if (match === null) return null;
+    const mark = match[1];
+    const kind = mark === '✓' ? 'ok' : mark === '✗' ? 'bad' : 'warn';
+    const row = el('div', 'check ' + kind);
+    row.append(el('span', 'mark', kind === 'ok' ? '✓' : kind === 'bad' ? '✗' : '!'));
+    row.append(el('span', 'label', match[2]));
+    return row;
+  }
+
+  function renderDoctor(box, text) {
+    const container = el('div', 'checks');
+    let current = null;
+    let found = 0;
+    for (const raw of text.split('\n')) {
+      const line = raw.replace(/\s+$/, '');
+      if (line.trim() === '') continue;
+      const row = doctorRow(line);
+      if (row !== null) { container.append(row); current = row; found += 1; continue; }
+      if (/^\s{2,}\S/.test(line) && current !== null) { current.append(el('div', 'detail', line.trim())); continue; }
+      box.append(el('div', 'note', line.trim()));
+    }
+    if (found === 0) return false;
+    box.append(container);
+    return true;
+  }
+
+  function renderOutdated(box, text) {
+    const lines = text.split('\n').map((line) => line.replace(/\s+$/, ''));
+    const headerIndex = lines.findIndex((line) => /^Package Name\s+Current/.test(line));
+    if (headerIndex === -1) return false;
+    const header = lines[headerIndex];
+    const starts = ['Current', 'Upgradable', 'Resolvable', 'Latest'].map((name) => header.indexOf(name));
+    if (starts.some((index) => index === -1)) return false;
+
+    const table = el('table', 'deps');
+    const head = el('thead');
+    const headRow = el('tr');
+    headRow.append(el('th', 'name', 'Package'));
+    for (const title of ['current', 'upgradable', 'resolvable', 'latest']) headRow.append(el('th', null, title));
+    head.append(headRow);
+    table.append(head);
+
+    const body = el('tbody');
+    let rows = 0;
+    const notes = [];
+    for (const line of lines.slice(headerIndex + 1)) {
+      if (line.trim() === '') continue;
+      const name = line.slice(0, starts[0]).trim();
+      if (name === '') { notes.push(line.trim()); continue; }
+      if (name.endsWith(':')) {
+        const groupRow = el('tr', 'group');
+        const cell = el('td', null, name);
+        cell.colSpan = 5;
+        groupRow.append(cell);
+        body.append(groupRow);
+        continue;
+      }
+      const cells = [
+        name,
+        line.slice(starts[0], starts[1]).trim(),
+        line.slice(starts[1], starts[2]).trim(),
+        line.slice(starts[2], starts[3]).trim(),
+        line.slice(starts[3]).trim(),
+      ];
+      const row = el('tr');
+      const outdated = cells[1].replace(/^\*/, '') !== cells[2].replace(/^\*/, '');
+      if (outdated) row.className = 'outdated';
+      row.append(el('td', 'name', cells[0]));
+      for (const value of cells.slice(1)) row.append(el('td', null, value));
+      body.append(row);
+      rows += 1;
+    }
+    table.append(body);
+    if (rows === 0) return false;
+    box.append(table);
+    for (const note of notes) box.append(el('div', 'note', note));
+    return true;
+  }
+
+  function renderPubGet(box, text) {
+    const list = el('div', 'checks');
+    let packages = 0;
+    for (const raw of text.split('\n')) {
+      const line = raw.replace(/\s+$/, '');
+      if (line.trim() === '') continue;
+      if (/^\s{2,}\S/.test(line) && /[\d^><=*]/.test(line)) {
+        const row = el('div', 'check ok');
+        row.append(el('span', 'mark', '·'));
+        row.append(el('span', 'label', line.trim()));
+        list.append(row);
+        packages += 1;
+        continue;
+      }
+      box.append(el('div', 'note', line.trim()));
+    }
+    if (packages === 0) return false;
+    box.append(list);
+    return true;
+  }
+
+  function renderCommand(command, text) {
+    const box = document.getElementById('command-out');
+    box.replaceChildren();
+    if (command === 'doctor' && renderDoctor(box, text)) return;
+    if (command === 'pub_outdated' && renderOutdated(box, text)) return;
+    if (command === 'pub_get' && renderPubGet(box, text)) return;
+    const pre = el('pre', 'out');
+    pre.textContent = text;
+    box.append(pre);
+  }
+
+  function show(slotId, text, isError) {
+    const box = slot(slotId);
+    if (!box) return;
+    box.textContent = text && text.length ? text : '';
+    box.classList.toggle('err', Boolean(isError));
+    box.scrollTop = 0;
+  }
+
+  function setBusy(active) {
+    inflight += active ? 1 : -1;
+    const on = inflight > 0;
+    statusText.parentElement.style.opacity = on ? '.6' : '';
+  }
+
+  function setConnected(value, label) {
+    connected = value;
+    dot.classList.toggle('on', value);
+    dot.classList.toggle('err', !value && label === 'error');
+    statusText.textContent = label || (value ? 'connected' : 'not connected');
+    statusChip.classList.toggle('linked', value);
+    for (const button of document.querySelectorAll('button[data-devtools]')) button.disabled = !value;
+    statusChip.title = value ? 'App facts' : 'Connect with a VM Service URI first';
+    remote.classList.toggle('live', value);
+    if (value) { loadToggles(); startHeap(); call('get_app_info', {}, 'control-out'); } else { toggleState = {}; renderToggles(); stopHeap(); heapLabel.textContent = 'heap: —'; }
+    if (!value) {
+      for (const toggle of document.querySelectorAll('button.toggle')) settle(toggle, false);
+      for (const box of document.querySelectorAll('pre.out')) { box.textContent = ''; box.classList.remove('err'); }
+    }
+  }
+
+  async function call(tool, args, slotId) {
+    setBusy(true);
+    if (slotId) show(slotId, '… ' + tool);
+    try {
+      const res = await fetch('/flutter/call?cwd=' + encodeURIComponent(cwd), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ tool, arguments: args }),
+      });
+      const data = await res.json();
+      if (data.ok !== true) {
+        if (slotId) show(slotId, data.error || 'error', true);
+        return data;
+      }
+      if (slotId) {
+        show(slotId, data.text, data.isError === true);
+        const box = slot(slotId);
+        for (const src of data.images || []) {
+          const img = document.createElement('img');
+          img.className = 'shot';
+          img.src = src;
+          box.after(img);
+        }
+      }
+      if (tool === 'connect') setConnected(data.isError !== true);
+      if (tool === 'discover_apps' && data.isError !== true) renderDiscovered(data.text);
+      if (tool === 'get_app_info' && data.isError !== true) renderAppInfo(data.text);
+      if (tool === 'disconnect') setConnected(false);
+      return data;
+    } catch (error) {
+      if (slotId) show(slotId, 'network: ' + error.message, true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* ── devices ─────────────────────────────────────────────────────────────── */
+  function deviceIcon(type) {
+    if (type === 'web') return 'ic-web';
+    if (type === 'mobile' || type === 'mobile-emulator') return 'ic-phone';
+    if (type === 'desktop') return 'ic-desktop';
+    return 'ic-info';
+  }
+
+  /** A short, useful platform label: "iOS 26.6", "macOS 27.0", "Chrome 153". */
+  function platformLabel(device) {
+    const sdk = String(device.sdk || '');
+    const chrome = sdk.match(/Chrome\s+(\d+)/);
+    let label = chrome ? 'Chrome ' + chrome[1] : sdk.split(/\s+/).slice(0, 2).join(' ');
+    // "macOS" as the device name and "macOS 27.0" as its version would print the
+    // same word twice; keep only what the name does not already say.
+    const name = String(device.name || '');
+    if (label !== '' && name !== '' && label.toLowerCase().startsWith(name.toLowerCase())) {
+      const rest = label.slice(name.length).trim();
+      label = rest === '' ? '' : (/^\d/.test(rest) ? 'v' + rest : rest);
+    }
+    return label || device.targetPlatform || '';
+  }
+
+  /* ── the device picker: one selected target, the rest behind a list ─────── */
+  const OS_ICONS = {
+    ios: 'ic-apple', darwin: 'ic-apple', macos: 'ic-apple',
+    android: 'ic-android', windows: 'ic-windows', linux: 'ic-linux',
+    web: 'ic-web', 'web-javascript': 'ic-web',
+  };
+  const pickerButton = document.getElementById('device-button');
+  const pickerList = document.getElementById('device-list');
+  const pickerName = document.getElementById('device-name');
+  const pickerMeta = document.getElementById('device-meta');
+  let selectedDeviceId = '';
+
+  function deviceKey() { return 'dsh-flutter-panel.device.' + (cwd || 'default'); }
+
+  function readSelectedDevice() {
+    try {
+      // The unscoped key is what earlier versions wrote; keep reading it once.
+      return localStorage.getItem(deviceKey()) || localStorage.getItem(DEVICE_KEY) || '';
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function selectDevice(id) {
+    selectedDeviceId = id;
+    try { localStorage.setItem(deviceKey(), id); } catch (error) { /* private mode */ }
+    renderDevicePicker();
+  }
+
+  /** The OS the device targets: iOS/macOS on Apple, plus Android, Windows, Linux. */
+  function osIconName(device) {
+    const platform = String(device.targetPlatform || '').toLowerCase();
+    if (OS_ICONS[platform] !== undefined) return OS_ICONS[platform];
+    return OS_ICONS[String(device.category || '').toLowerCase()] || 'ic-layers';
+  }
+
+  function deviceMetaText(device) {
+    const parts = [platformLabel(device)];
+    if (device.emulator === true) parts.push('emulator');
+    if (device.connection === 'wireless') parts.push('wireless');
+    if (device.ephemeral === true) parts.push('ephemeral');
+    return parts.filter(Boolean).join(' · ');
+  }
+
+  const BRAND_ICONS = new Set(['ic-apple', 'ic-android', 'ic-windows', 'ic-linux']);
+
+  function applyIcon(svg, symbolId) {
+    svg.querySelector('use').setAttribute('href', '#' + symbolId);
+    svg.classList.toggle('brand', BRAND_ICONS.has(symbolId));
+  }
+
+  /** OS icon plus the device kind; the kind is dropped when both are the same
+   *  glyph, which is what a web target would otherwise show twice. */
+  function applyIcons(scope, device) {
+    const os = osIconName(device);
+    const kind = deviceIcon(device.type);
+    applyIcon(scope.querySelector('.os'), os);
+    const kindIcon = scope.querySelector('.kind');
+    applyIcon(kindIcon, kind);
+    kindIcon.style.display = kind === os ? 'none' : '';
+  }
+
+  function renderDevicePicker() {
+    const chosen = knownDevices.find((device) => device.id === selectedDeviceId) || knownDevices[0] || null;
+    pickerList.replaceChildren();
+    if (chosen === null) {
+      selectedDeviceId = '';
+      pickerName.textContent = 'no devices found';
+      pickerMeta.textContent = '';
+      pickerButton.disabled = true;
+      refreshRunToggle();
+      return;
+    }
+    selectedDeviceId = chosen.id;
+    pickerButton.disabled = false;
+    applyIcons(pickerButton, chosen);
+    pickerName.textContent = chosen.name || chosen.id;
+    pickerMeta.textContent = deviceMetaText(chosen);
+    pickerButton.title = chosen.id + '  — click to pick another device';
+    for (const device of knownDevices) {
+      const row = el('button', 'picker-row');
+      row.setAttribute('role', 'option');
+      row.setAttribute('aria-selected', String(device.id === selectedDeviceId));
+      const osIcon = osIconName(device);
+      const kindIcon = deviceIcon(device.type);
+      row.append(icon(osIcon, BRAND_ICONS.has(osIcon) ? 'os brand' : 'os'));
+      const kindSvg = icon(kindIcon, 'kind');
+      if (kindIcon === osIcon) kindSvg.style.display = 'none';
+      row.append(kindSvg);
+      const labels = el('span', 'picker-labels');
+      labels.append(el('span', 'picker-name', device.name || device.id));
+      labels.append(el('span', 'picker-meta', deviceMetaText(device)));
+      row.append(labels);
+      const check = el('span', 'check');
+      check.append(icon('ic-check'));
+      row.append(check);
+      row.title = device.id;
+      row.addEventListener('click', () => { selectDevice(device.id); setPickerOpen(false); });
+      pickerList.append(row);
+    }
+    refreshRunToggle();
+  }
+
+  function refreshRunToggle() { updateRunToggle(runRunning); }
+
+  function setPickerOpen(open) {
+    pickerList.hidden = !open;
+    pickerButton.setAttribute('aria-expanded', String(open));
+  }
+
+  pickerButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    setPickerOpen(pickerList.hidden);
+  });
+  document.addEventListener('click', (event) => {
+    if (!pickerList.hidden && !pickerList.contains(event.target)) setPickerOpen(false);
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !pickerList.hidden) setPickerOpen(false);
+  });
+  // The panel lives in an iframe: a click on the DSH chrome never reaches this
+  // document, but the window does lose focus, which is our cue to close.
+  window.addEventListener('blur', () => { if (!pickerList.hidden) setPickerOpen(false); });
+
+  async function loadDevices(force) {
+    devicesSummary.textContent = '… reading devices';
+    devicesError.textContent = '';
+    try {
+      const res = await fetch('/flutter/devices?cwd=' + encodeURIComponent(cwd) + (force ? '&force=1' : ''));
+      const data = await res.json();
+      if (data.ok !== true) {
+        devicesSummary.textContent = 'devices unavailable';
+        // The SDK path is diagnostic noise until something actually broke; here it broke.
+        show('devices-error', [data.error, data.stderr].filter(Boolean).join('\n'), true);
+        return;
+      }
+      const list = data.devices || [];
+      knownDevices = list;
+      renderDevicePicker();
+      devicesSummary.textContent = list.length === 1 ? '1 device' : list.length + ' devices';
+      devicesSummary.title = 'SDK: ' + (data.flutter || '—') + (data.cached ? ' (cached)' : '');
+      if (list.length === 0) devicesSummary.textContent = 'no devices found';
+    } catch (error) {
+      devicesSummary.textContent = 'devices unavailable';
+      show('devices-error', 'network: ' + error.message, true);
+    }
+  }
+
+  /* ── attach: a URI found by discovery is one click away ──────────────────── */
+  function renderDiscovered(text) {
+    const box = document.getElementById('discovered');
+    box.replaceChildren();
+    const found = String(text || '').match(/https?:\/\/127\.0\.0\.1:\d+\/[A-Za-z0-9_\-=]*\/?/g) || [];
+    const unique = Array.from(new Set(found));
+    if (unique.length === 0) return;
+    for (const url of unique) {
+      const chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.title = url + '  — connect';
+      chip.append(icon('ic-link'));
+      const label = document.createElement('span');
+      label.textContent = url.replace(/^https?:\/\//, '');
+      chip.append(label);
+      chip.addEventListener('click', () => {
+        uri.value = url;
+        call('connect', { vmServiceUri: url }, 'connect-out');
+      });
+      box.append(chip);
+    }
+  }
+
+  /* ── app: heap, GC and memory snapshots through the VM Service ───────────── */
+  const heapLabel = document.getElementById('heap');
+
+  function formatHeap(usage) {
+    if (usage === undefined || usage === null) return 'heap: —';
+    const mb = (value) => (Number(value) / (1024 * 1024)).toFixed(1);
+    const used = usage.heapUsage ?? usage.used;
+    const capacity = usage.heapCapacity ?? usage.capacity;
+    if (used === undefined) return 'heap: —';
+    return 'heap: ' + mb(used) + ' MB of ' + mb(capacity) + ' MB' + (usage.externalUsage ? '  · external ' + mb(usage.externalUsage) + ' MB' : '');
+  }
+
+  function vmUri() { return uri.value.trim(); }
+
+  async function refreshHeap() {
+    const vmServiceUri = vmUri();
+    if (vmServiceUri === '') { heapLabel.textContent = 'heap: —'; return; }
+    try {
+      const data = await (await fetch('/flutter/heap?uri=' + encodeURIComponent(vmServiceUri))).json();
+      heapLabel.textContent = data.ok === true ? formatHeap(data.usage) : 'heap: ' + (data.error || 'unavailable');
+    } catch (error) {
+      heapLabel.textContent = 'heap: ' + error.message;
+    }
+  }
+
+  function startHeap() {
+    refreshHeap();
+    if (heapTimer === null) heapTimer = setInterval(refreshHeap, 5000);
+  }
+
+  function stopHeap() {
+    if (heapTimer !== null) { clearInterval(heapTimer); heapTimer = null; }
+  }
+
+  function readSnapshots() {
+    try { return JSON.parse(localStorage.getItem(SNAP_KEY) || '[]'); } catch (error) { return []; }
+  }
+
+  document.getElementById('gc').onclick = async () => {
+    const vmServiceUri = vmUri();
+    if (vmServiceUri === '') { show('app-out', 'a VM Service URI is required', true); return; }
+    show('app-out', '… collecting');
+    try {
+      const data = await (await fetch('/flutter/gc?uri=' + encodeURIComponent(vmServiceUri), { method: 'POST' })).json();
+      if (data.ok !== true) { show('app-out', data.error || 'GC failed', true); return; }
+      heapLabel.textContent = formatHeap(data.usage);
+      show('app-out', 'GC done · ' + formatHeap(data.usage));
+    } catch (error) {
+      show('app-out', 'network: ' + error.message, true);
+    }
+  };
+
+  document.getElementById('snap-save').onclick = async () => {
+    const name = 'panel-' + new Date().toISOString().slice(11, 19);
+    const data = await call('save_snapshot', { name, forceGC: true }, 'app-out');
+    if (data && data.ok === true && data.isError !== true) {
+      const names = readSnapshots();
+      names.push(name);
+      try { localStorage.setItem(SNAP_KEY, JSON.stringify(names.slice(-10))); } catch (error) { /* private mode */ }
+    }
+  };
+
+  document.getElementById('snap-compare').onclick = async () => {
+    const names = readSnapshots();
+    if (names.length < 2) { show('app-out', 'two panel-made snapshots are needed — so far ' + names.length, true); return; }
+    const before = names[names.length - 2];
+    const after = names[names.length - 1];
+    await call('compare_snapshots', { before, after }, 'app-out');
+  };
+
+  /* ── project: one-shot Flutter CLI commands ──────────────────────────────── */
+  for (const button of document.querySelectorAll('button[data-command]')) {
+    button.addEventListener('click', async () => {
+      const command = button.dataset.command;
+      show('command-out', '… ' + command);
+      try {
+        const data = await (await fetch('/flutter/command?cwd=' + encodeURIComponent(cwd), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ command }),
+        })).json();
+        if (data.ok !== true) { show('command-out', data.error || 'could not run', true); return; }
+        renderCommand(command, data.text || '(empty)');
+      } catch (error) {
+        show('command-out', 'network: ' + error.message, true);
+      }
+    });
+  }
+
+  /* ── launch: pick a device, run it, and take the VM Service URI from it ──── */
+  const runMode = document.getElementById('run-mode');
+  const runStatus = document.getElementById('run-status');
+  const runOut = document.getElementById('run-out');
+  const DEVICE_KEY = 'dsh-flutter-panel.device';
+  const FLAVOR_KEY = 'dsh-flutter-panel.flavor.' + (cwd || 'default');
+  const DEFINES_KEY = 'dsh-flutter-panel.defines.' + (cwd || 'default');
+  let defineRows = [];
+
+
+  const runToggle = document.getElementById('run-toggle');
+  const runToggleLabel = document.getElementById('run-toggle-label');
+  let runRunning = false;
+
+  /** One button for both actions: the run state decides which one it is. */
+  function updateRunToggle(running) {
+    runRunning = running === true;
+    runToggleLabel.textContent = runRunning ? 'Stop' : 'Run';
+    runToggle.querySelector('use').setAttribute('href', runRunning ? '#ic-stop' : '#ic-play');
+    runToggle.classList.toggle('primary', !runRunning);
+    runToggle.classList.toggle('outline', runRunning);
+    runToggle.title = runRunning
+      ? 'Stop the app started from this panel'
+      : 'Run the app on the selected device';
+    runToggle.disabled = !runRunning && selectedDeviceId === '';
+  }
+
+  function renderRun(state) {
+    if (state.running === true) {
+      runStatus.textContent = 'starting · ' + (state.deviceId || '') + ' · ' + (state.mode || 'debug') +
+        (state.flavor ? ' · flavor ' + state.flavor : '') +
+        (Array.isArray(state.defines) && state.defines.length > 0 ? ' · define ' + state.defines.length : '') +
+        (state.vmServiceUri ? ' · ' + state.vmServiceUri : '  · waiting for the VM Service');
+      runStatus.title = Array.isArray(state.defines) ? state.defines.join('\n') : '';
+      if (Array.isArray(state.warnings) && state.warnings.length > 0) {
+        runOut.textContent = state.warnings.join('\n');
+      }
+    } else {
+      runStatus.textContent = state.exitCode === undefined
+        ? 'The app was not started from this panel'
+        : 'flutter run exited (code ' + state.exitCode + ')';
+    }
+    runStatus.title = state.appId ? 'appId: ' + state.appId : '';
+    if (Array.isArray(state.logs) && state.logs.length > 0) {
+      runOut.textContent = state.logs.slice(-12).join('\n');
+      runOut.scrollTop = runOut.scrollHeight;
+    }
+    updateRunToggle(state.running === true);
+    document.getElementById('run-detach').disabled = state.running !== true;
+    currentWebUrl = typeof state.webUrl === 'string' ? state.webUrl : '';
+    document.getElementById('run-web').disabled = currentWebUrl === '';
+  }
+
+  async function pollRun() {
+    try {
+      const res = await fetch('/flutter/run?cwd=' + encodeURIComponent(cwd));
+      const state = await res.json();
+      renderRun(state);
+      // The whole point of launching here: the URI arrives by itself.
+      // Not gated on `running`: the URI survives in the host state, and a run
+      // that already stopped still told us where the VM Service was.
+      if (typeof state.vmServiceUri === 'string' && state.vmServiceUri !== lastLaunchedUri) {
+        lastLaunchedUri = state.vmServiceUri;
+        uri.value = state.vmServiceUri;
+        call('connect', { vmServiceUri: state.vmServiceUri }, 'connect-out');
+      }
+      if (state.running !== true && runTimer !== null) {
+        clearInterval(runTimer);
+        runTimer = null;
+      }
+    } catch (error) {
+      runStatus.textContent = 'no connection to the host half: ' + error.message;
+    }
+  }
+
+  function watchRun() {
+    if (runTimer === null) runTimer = setInterval(pollRun, 2000);
+  }
+
+  /* ── flavor and --dart-define: compile-time inputs for the launch ────────── */
+  const flavorInput = document.getElementById('run-flavor');
+  const definesList = document.getElementById('defines-list');
+  const definesCount = document.getElementById('defines-count');
+
+  function readStored(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? fallback : JSON.parse(raw);
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function store(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (error) { /* private mode */ }
+  }
+
+  function updateDefinesCount() {
+    const filled = defineRows.filter((entry) => entry.key.trim() !== '').length;
+    definesCount.textContent = filled === 0 ? 'no defines' : filled + ' define';
+  }
+
+  function renderDefines() {
+    definesList.replaceChildren();
+    defineRows.forEach((entry, index) => {
+      const row = el('div', 'define');
+      const key = el('input');
+      key.placeholder = 'NAME';
+      key.value = entry.key;
+      key.addEventListener('input', () => { defineRows[index].key = key.value; store(DEFINES_KEY, defineRows); updateDefinesCount(); });
+      const value = el('input');
+      value.placeholder = 'value';
+      value.value = entry.value;
+      value.addEventListener('input', () => { defineRows[index].value = value.value; store(DEFINES_KEY, defineRows); });
+      const remove = el('button', 'icon outline');
+      remove.title = 'Remove';
+      remove.append(icon('ic-stop'));
+      remove.addEventListener('click', () => { defineRows.splice(index, 1); store(DEFINES_KEY, defineRows); renderDefines(); });
+      row.append(key, value, remove);
+      definesList.append(row);
+    });
+    updateDefinesCount();
+  }
+
+  document.getElementById('define-add').onclick = () => {
+    defineRows.push({ key: '', value: '' });
+    renderDefines();
+    const inputs = definesList.querySelectorAll('input');
+    if (inputs.length > 0) inputs[inputs.length - 2].focus();
+  };
+
+  flavorInput.addEventListener('change', () => store(FLAVOR_KEY, flavorInput.value.trim()));
+
+  async function loadFlavors() {
+    try {
+      const data = await (await fetch('/flutter/flavors?cwd=' + encodeURIComponent(cwd))).json();
+      const list = document.getElementById('flavor-list');
+      list.replaceChildren();
+      if (data.ok !== true || (data.flavors || []).length === 0) {
+        flavorInput.title = 'No flavor found in this project — type one if you need it';
+        return;
+      }
+      const names = [];
+      for (const flavor of data.flavors) {
+        const option = el('option');
+        option.value = flavor.name;
+        list.append(option);
+        names.push(flavor.name + ' (' + flavor.source + ')');
+      }
+      flavorInput.title = 'Found in the project: ' + names.join(', ');
+    } catch (error) {
+      flavorInput.title = 'Flavor list unavailable: ' + error.message;
+    }
+  }
+
+  flavorInput.value = readStored(FLAVOR_KEY, '') || '';
+  defineRows = readStored(DEFINES_KEY, []);
+  if (!Array.isArray(defineRows)) defineRows = [];
+  renderDefines();
+  loadFlavors();
+
+  runToggle.onclick = async () => {
+    if (runRunning) {
+      try {
+        const res = await fetch('/flutter/run/stop?cwd=' + encodeURIComponent(cwd), { method: 'POST' });
+        renderRun(await res.json());
+      } catch (error) {
+        runStatus.textContent = 'network: ' + error.message;
+      }
+      return;
+    }
+    const deviceId = selectedDeviceId;
+    if (deviceId === '') { runStatus.textContent = 'pick a device first'; return; }
+    lastLaunchedUri = '';
+    runOut.textContent = '';
+    runStatus.textContent = 'starting…';
+    try {
+      const res = await fetch('/flutter/run?cwd=' + encodeURIComponent(cwd), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          deviceId,
+          mode: runMode.value,
+          flavor: flavorInput.value.trim(),
+          defines: defineRows.filter((entry) => entry.key.trim() !== ''),
+        }),
+      });
+      const state = await res.json();
+      if (state.ok !== true) { runStatus.textContent = state.error || 'could not start'; return; }
+      renderRun(state);
+      watchRun();
+    } catch (error) {
+      runStatus.textContent = 'network: ' + error.message;
+    }
+  };
+
+  document.getElementById('run-detach').onclick = async () => {
+    try {
+      renderRun(await (await fetch('/flutter/run/detach?cwd=' + encodeURIComponent(cwd), { method: 'POST' })).json());
+    } catch (error) {
+      runStatus.textContent = 'network: ' + error.message;
+    }
+  };
+
+  document.getElementById('run-web').onclick = () => {
+    if (currentWebUrl === '') return;
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'dsh-flutter-open-url', url: currentWebUrl }, window.location.origin);
+    } else {
+      window.open(currentWebUrl, '_blank');
+    }
+    runStatus.textContent = 'opening ' + currentWebUrl;
+  };
+
+  document.getElementById('run-emulator').onclick = async () => {
+    runStatus.textContent = '… looking for emulators';
+    try {
+      const listed = await (await fetch('/flutter/emulators?cwd=' + encodeURIComponent(cwd))).json();
+      if (listed.ok !== true) { runStatus.textContent = listed.error || 'emulators unavailable'; return; }
+      const emulators = listed.emulators || [];
+      if (emulators.length === 0) { runStatus.textContent = 'no emulators'; return; }
+      const picked = emulators[0];
+      runStatus.textContent = 'starting ' + picked.name + (emulators.length > 1 ? ' (first of ' + emulators.length + ')' : '');
+      const res = await (await fetch('/flutter/emulator/launch?cwd=' + encodeURIComponent(cwd), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ emulatorId: picked.id }),
+      })).json();
+      if (res.ok !== true) { runStatus.textContent = res.error || 'could not boot the emulator'; return; }
+      runStatus.textContent = picked.name + ' is booting — it will show up in the device list';
+    } catch (error) {
+      runStatus.textContent = 'network: ' + error.message;
+    }
+  };
+
+  /* ── debug toggles: service extensions the running app actually registered ─ */
+  const togglesBox = document.getElementById('toggles');
+
+  function renderToggles() {
+    togglesBox.replaceChildren();
+    const names = Object.keys(toggleState);
+    if (names.length === 0) {
+      const note = document.createElement('div');
+      note.className = 'dim';
+      note.textContent = 'The app registered no debug extensions';
+      togglesBox.append(note);
+      return;
+    }
+    for (const name of names) {
+      const row = document.createElement('button');
+      row.className = 'switch-row' + (toggleState[name] === true ? ' on' : '');
+      const label = document.createElement('span');
+      label.className = 'label';
+      label.textContent = (toggleSpecs && toggleSpecs[name]) || name.replace('ext.flutter.', '');
+      const knob = document.createElement('span');
+      knob.className = 'switch';
+      row.append(label, knob);
+      row.addEventListener('click', () => setToggle(name, toggleState[name] !== true));
+      togglesBox.append(row);
+    }
+  }
+
+  async function loadToggles() {
+    const vmServiceUri = uri.value.trim();
+    if (vmServiceUri === '') { toggleState = {}; renderToggles(); return; }
+    try {
+      const res = await fetch('/flutter/extensions?uri=' + encodeURIComponent(vmServiceUri));
+      const data = await res.json();
+      if (data.ok !== true) {
+        toggleState = {};
+        renderToggles();
+        show('toggles-out', data.error || 'extensions unavailable', true);
+        return;
+      }
+      toggleState = data.state || {};
+      renderToggles();
+    } catch (error) {
+      toggleState = {};
+      renderToggles();
+      show('toggles-out', 'network: ' + error.message, true);
+    }
+  }
+
+  async function setToggle(name, value) {
+    const vmServiceUri = uri.value.trim();
+    if (vmServiceUri === '') { show('toggles-out', 'a VM Service URI is required', true); return; }
+    show('toggles-out', '… ' + name);
+    try {
+      const res = await fetch('/flutter/extension?uri=' + encodeURIComponent(vmServiceUri), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name, value }),
+      });
+      const data = await res.json();
+      if (data.ok !== true) { show('toggles-out', data.error || 'could not toggle', true); return; }
+      toggleState[name] = data.state;
+      renderToggles();
+      show('toggles-out', ((toggleSpecs && toggleSpecs[name]) || name) + ' — ' + (data.state === true ? 'on' : 'off'));
+    } catch (error) {
+      show('toggles-out', 'network: ' + error.message, true);
+    }
+  }
+
+  /* ── toggles: one control per start/stop pair ────────────────────────────── */
+  const TOGGLES = {};
+  for (const button of document.querySelectorAll('button.toggle')) {
+    const label = button.querySelector('span');
+    const state = { button, label, base: label.textContent, baseTitle: button.title, running: false };
+    TOGGLES[button.dataset.toggle] = state;
+    button.addEventListener('click', async function () {
+      const running = state.running;
+      const tool = running ? button.dataset.off : button.dataset.on;
+      const slotId = button.closest('section').querySelector('pre.out').id;
+      const data = await call(tool, {}, slotId);
+      // ok is the transport; isError is the tool. A toggle that flips to
+      // "running" on a refused call would lie about the app's state.
+      if (data && data.ok === true && data.isError !== true) settle(button, !running);
+    });
+  }
+
+  function settle(button, running) {
+    const state = TOGGLES[button.dataset.toggle];
+    if (!state) return;
+    state.running = running;
+    button.classList.toggle('running', running);
+    state.label.textContent = running ? button.dataset.offLabel : state.base;
+    const use = button.querySelector('use');
+    if (use) use.setAttribute('href', running ? '#ic-stop' : '#ic-play');
+    button.title = running ? 'Stop and show the result' : state.baseTitle;
+  }
+
+  /* ── wiring ──────────────────────────────────────────────────────────────── */
+  document.getElementById('connect').onclick = () => {
+    const value = uri.value.trim();
+    if (!value) { show('connect-out', 'enter a VM Service URI', true); return; }
+    call('connect', { vmServiceUri: value }, 'connect-out');
+  };
+  document.getElementById('disconnect').onclick = () => call('disconnect', {}, 'connect-out');
+  document.getElementById('discover').onclick = () => call('discover_apps', { autoConnect: false }, 'connect-out');
+  statusChip.onclick = () => {
+    if (connected) call('get_app_info', {}, 'control-out');
+  };
+  function renderExpressionHistory() {
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem(EXPR_KEY) || '[]'); } catch (error) { history = []; }
+    const list = document.getElementById('expr-history');
+    list.replaceChildren();
+    for (const item of history) {
+      const option = document.createElement('option');
+      option.value = item;
+      list.append(option);
+    }
+  }
+
+  document.getElementById('eval').onclick = async () => {
+    const expression = document.getElementById('expr').value.trim();
+    if (!expression) { show('eval-out', 'empty expression', true); return; }
+    const data = await call('evaluate_expression', { expression }, 'eval-out');
+    if (data && data.ok === true && data.isError !== true) {
+      let history = [];
+      try { history = JSON.parse(localStorage.getItem(EXPR_KEY) || '[]'); } catch (error) { history = []; }
+      history = history.filter((entry) => entry !== expression);
+      history.push(expression);
+      try { localStorage.setItem(EXPR_KEY, JSON.stringify(history.slice(-5))); } catch (error) { /* private mode */ }
+      renderExpressionHistory();
+    }
+  };
+  renderExpressionHistory();
+  document.getElementById('perf').onclick = () => {
+    const durationSec = Number(document.getElementById('seconds').value) || 30;
+    const scenario = document.getElementById('scenario').value.trim() || 'manual-session';
+    call('collect_performance_session', { scenario, durationSec, projectRoot: cwd || undefined }, 'perf-out');
+  };
+  for (const button of document.querySelectorAll('button[data-tool]')) {
+    const slotId = button.closest('section').querySelector('pre.out').id;
+    button.addEventListener('click', () => call(button.dataset.tool, {}, slotId));
+  }
+  /** DevTools runs on the daemon's own server and embeds in the panel; the
+   *  sidebar tab stays available for a full-width view. */
+  const devtoolsView = document.getElementById('devtools-view');
+  const devtoolsFrame = document.getElementById('devtools-frame');
+  const devtoolsWhere = document.getElementById('devtools-where');
+  let devtoolsPage = 'inspector';
+  let devtoolsCurrentUrl = '';
+
+  async function devtoolsUrl(page) {
+    const vmServiceUri = uri.value.trim();
+    const query = new URLSearchParams({ cwd, page });
+    if (vmServiceUri !== '') query.set('uri', vmServiceUri);
+    const res = await fetch('/flutter/devtools?' + query.toString());
+    const data = await res.json();
+    return data.ok === true ? data.url : null;
+  }
+
+  async function openDevtools(page) {
+    show('devtools-out', '… opening ' + page);
+    try {
+      const url = await devtoolsUrl(page);
+      if (url === null) { show('devtools-out', 'no DevTools address', true); return; }
+      devtoolsPage = page;
+      devtoolsCurrentUrl = url;
+      devtoolsView.hidden = false;
+      devtoolsFrame.src = url;
+      devtoolsWhere.textContent = page + ' · ' + url.replace(/^https?:\/\//, '');
+      devtoolsWhere.title = url;
+      show('devtools-out', '');
+    } catch (error) {
+      show('devtools-out', 'network: ' + error.message, true);
+    }
+  }
+
+  document.getElementById('devtools-sidebar').onclick = async () => {
+    const url = devtoolsCurrentUrl !== '' ? devtoolsCurrentUrl : await devtoolsUrl(devtoolsPage);
+    if (url === null || url === undefined) { show('devtools-out', 'no DevTools address', true); return; }
+    devtoolsCurrentUrl = url;
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'dsh-flutter-open-url', url }, window.location.origin);
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
+  document.getElementById('devtools-close').onclick = () => {
+    devtoolsView.hidden = true;
+    devtoolsFrame.src = 'about:blank';
+  };
+  for (const button of document.querySelectorAll('button[data-devtools]')) {
+    button.disabled = true;
+    button.addEventListener('click', () => openDevtools(button.dataset.devtools));
+  }
+
+  document.getElementById('devices-refresh').onclick = () => loadDevices(true);
+  // The daemon keeps the list live, so a cheap re-read is enough to show a
+  // phone that was plugged in while the panel was open.
+  setInterval(() => loadDevices(false), 10000);
+  selectedDeviceId = readSelectedDevice();
+  renderRun({ running: false });
+  pollRun();
+  setConnected(false); // initial state: chip tooltip, hidden remote sections, empty slots
+  loadDevices(false);
+
+  fetch('/flutter/config?cwd=' + encodeURIComponent(cwd))
+    .then((r) => r.json())
+    .then((cfg) => {
+      projectEl.textContent = cwdName || 'project';
+      projectEl.title = cfg.cwd || cwd;
+      envEl.textContent = cfg.fvm ? 'fvm ' + cfg.fvm.version : 'no fvm pin';
+      envEl.title = cfg.flutter ? 'SDK: ' + cfg.flutter : '';
+      toggleSpecs = cfg.toggles || null;
+    })
+    .catch(() => { projectEl.textContent = cwdName || 'project'; });
+</script>
+</body>
+</html>

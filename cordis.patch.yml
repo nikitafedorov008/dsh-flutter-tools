@@ -1,0 +1,8 @@
+# dsh-flutter-panel bundle patch.
+#
+# The entry `name` must equal the package name so the client-modules scan
+# resolves the package's ./client bundle and serves it at
+# /plugins/dsh-flutter-panel/client.js.
+- insert:
+    - id: flutter-panel
+      name: 'dsh-flutter-panel'
