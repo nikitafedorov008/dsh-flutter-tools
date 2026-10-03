@@ -1,5 +1,5 @@
 {
-  "name": "dsh-flutter-panel",
+  "name": "dsh-flutter-tools",
   "version": "0.0.1",
   "private": true,
   "description": "Flutter panel for the DSH sidebar: VM Service connection, hot reload/restart, rebuild tracking, profiling, memory and network capture, and a one-click performance session on top of flutter-devtools-mcp",

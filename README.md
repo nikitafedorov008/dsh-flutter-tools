@@ -1,4 +1,4 @@
-# dsh-flutter-panel
+# dsh-flutter-tools
 
 A Flutter panel for the [DeepSeek Harness](https://github.com/deepseek-ai) sidebar: run, inspect and
 profile a Flutter app without leaving the conversation.
@@ -63,7 +63,7 @@ Requirements:
 | `panel.html` | served page | the whole UI, plain HTML/CSS/JS — no build step |
 | `client.js` | client bundle | registers the sidebar tab whose body is an iframe onto `/flutter` |
 | `icon.svg` | manifest asset | the icon the plugin manager shows, declared as `icon` in `package.json` |
-| `cordis.patch.yml` | bundle patch | the mount row; its `name` must equal the package name so the client bundle is served at `/plugins/dsh-flutter-panel/client.js` |
+| `cordis.patch.yml` | bundle patch | the mount row; its `name` must equal the package name so the client bundle is served at `/plugins/dsh-flutter-tools/client.js` |
 | `dev-server.mjs` | development | runs the same routes outside DSH for UI iteration |
 | `docs/` | development | the screenshots above |
 

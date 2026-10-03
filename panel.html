@@ -591,8 +591,8 @@
   let lastLaunchedUri = '';
   let currentWebUrl = '';
   let heapTimer = null;
-  const SNAP_KEY = 'dsh-flutter-panel.snapshots';
-  const EXPR_KEY = 'dsh-flutter-panel.expressions';
+  const SNAP_KEY = 'dsh-flutter-tools.snapshots';
+  const EXPR_KEY = 'dsh-flutter-tools.expressions';
 
 
   /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -878,7 +878,7 @@
   const pickerMeta = document.getElementById('device-meta');
   let selectedDeviceId = '';
 
-  function deviceKey() { return 'dsh-flutter-panel.device.' + (cwd || 'default'); }
+  function deviceKey() { return 'dsh-flutter-tools.device.' + (cwd || 'default'); }
 
   function readSelectedDevice() {
     try {
@@ -1130,9 +1130,9 @@
   const runMode = document.getElementById('run-mode');
   const runStatus = document.getElementById('run-status');
   const runOut = document.getElementById('run-out');
-  const DEVICE_KEY = 'dsh-flutter-panel.device';
-  const FLAVOR_KEY = 'dsh-flutter-panel.flavor.' + (cwd || 'default');
-  const DEFINES_KEY = 'dsh-flutter-panel.defines.' + (cwd || 'default');
+  const DEVICE_KEY = 'dsh-flutter-tools.device';
+  const FLAVOR_KEY = 'dsh-flutter-tools.flavor.' + (cwd || 'default');
+  const DEFINES_KEY = 'dsh-flutter-tools.defines.' + (cwd || 'default');
   let defineRows = [];
 
 

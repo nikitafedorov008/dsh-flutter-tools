@@ -1,4 +1,4 @@
-// dsh-flutter-panel — host half (Cordis plugin).
+// dsh-flutter-tools — host half (Cordis plugin).
 //
 // Serves the Flutter panel page and its JSON API on the DSH web server. Two
 // long-lived children back it: `flutter daemon` (devices, emulators, the
@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
-export const name = 'dsh-flutter-panel'
+export const name = 'dsh-flutter-tools'
 
 /** The DSH web server is the only service this half needs. */
 export const inject = ['webServer']
@@ -623,7 +623,7 @@ class FlutterDaemon {
     child.stdout.setEncoding('utf8')
     child.stdout.on('data', (chunk) => this.#onData(chunk))
     child.stderr.setEncoding('utf8')
-    child.stderr.on('data', (chunk) => console.log(`[dsh-flutter-panel] daemon: ${String(chunk).trimEnd()}`))
+    child.stderr.on('data', (chunk) => console.log(`[dsh-flutter-tools] daemon: ${String(chunk).trimEnd()}`))
     child.on('exit', (code) => {
       this.#child = null
       this.#connected = null
@@ -662,7 +662,7 @@ class FlutterDaemon {
   #onMessage(message) {
     if (message.event !== undefined) {
       if (message.event === 'daemon.connected') {
-        console.log(`[dsh-flutter-panel] daemon connected v${message.params?.version ?? '?'}`)
+        console.log(`[dsh-flutter-tools] daemon connected v${message.params?.version ?? '?'}`)
         this.#onConnected?.()
       } else if (message.event === 'device.added') {
         const device = normaliseDevice(message.params ?? {})
@@ -773,7 +773,7 @@ class McpChild {
       child.stdout.setEncoding('utf8')
       child.stdout.on('data', (chunk) => this.#onData(chunk))
       child.stderr.setEncoding('utf8')
-      child.stderr.on('data', (chunk) => console.log(`[dsh-flutter-panel] ${String(chunk).trimEnd()}`))
+      child.stderr.on('data', (chunk) => console.log(`[dsh-flutter-tools] ${String(chunk).trimEnd()}`))
       child.on('error', reject)
       child.on('exit', (code) => {
         this.#child = null
@@ -784,7 +784,7 @@ class McpChild {
       this.#request('initialize', {
         protocolVersion: '2024-11-05',
         capabilities: {},
-        clientInfo: { name: 'dsh-flutter-panel', version: '0.0.1' },
+        clientInfo: { name: 'dsh-flutter-tools', version: '0.0.1' },
       })
         .then(() => {
           child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`)
@@ -939,7 +939,7 @@ export function createFlutterPanel() {
       const daemon = await getDaemon(cwd)
       payload = { flutter: await resolveFlutter(cwd), devices: await daemon.devices(), source: 'daemon' }
     } catch (error) {
-      console.log(`[dsh-flutter-panel] daemon unavailable (${error.message}); falling back to flutter devices`)
+      console.log(`[dsh-flutter-tools] daemon unavailable (${error.message}); falling back to flutter devices`)
       payload = await devicesOnce(cwd)
     }
     deviceCache.set(key, payload)
@@ -1223,9 +1223,9 @@ export function createFlutterPanel() {
 
 export function apply(ctx) {
   const panel = createFlutterPanel()
-  ctx.effect(() => () => panel.dispose(), 'dsh-flutter-panel: children')
+  ctx.effect(() => () => panel.dispose(), 'dsh-flutter-tools: children')
   ctx.effect(
     () => ctx.webServer.register({ kind: 'prefix', path: '/flutter', handler: panel.handle }),
-    'dsh-flutter-panel: /flutter route',
+    'dsh-flutter-tools: /flutter route',
   )
 }

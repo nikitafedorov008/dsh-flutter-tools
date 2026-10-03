@@ -1,5 +1,5 @@
 /*!
- * dsh-flutter-panel — client half (browser bundle).
+ * dsh-flutter-tools — client half (browser bundle).
  *
  * Registers a Flutter page with dsh-better-sidebar via `ctx.betterSidebar`.
  * The page body is an iframe onto the plugin's own /flutter host route, so all
@@ -18,7 +18,7 @@
  * resolved from the shell's module table at runtime.
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-flutter-panel',
+  id: 'dsh-flutter-tools',
   factory: (require) => {
     var module = { exports: {} };
     var exports = module.exports;
@@ -213,7 +213,7 @@ window.__ModuleLoader__.load({
         // plugin disable); a stray registration would throw "already registered".
         ctx.effect(function () {
           return ctx.betterSidebar.registerTab({
-            id: 'dsh-flutter-panel:panel',
+            id: 'dsh-flutter-tools:panel',
             title: 'Flutter',
             description: 'Flutter: VM Service connection, hot reload, profiling, performance session',
             icon: function (size) { return IconFlutter16(size); },
