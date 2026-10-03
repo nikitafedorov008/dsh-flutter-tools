@@ -43,12 +43,10 @@ Service and [`flutter-devtools-mcp`](https://www.npmjs.com/package/flutter-devto
 
 ## Install
 
-DeepSeek Harness → **Settings → Add plugin**, then paste this repository's address. That field also
-takes a plugin package name or a local directory. From the CLI the same spec works:
-
-```sh
-dsh plugin add <repository-url-or-local-directory>
-```
+DeepSeek Harness → **Settings → Add plugin**, then paste this repository's address. That field takes
+a plugin package name, a GitHub repository address or a local directory. The CLI takes the same spec
+(`dsh plugin add …`); note that a profile the desktop app manages refuses CLI changes, so the plugin
+manager is the usual route.
 
 Requirements:
 
